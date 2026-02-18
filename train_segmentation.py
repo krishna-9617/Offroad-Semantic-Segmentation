@@ -398,11 +398,10 @@ def main():
     print(f"Using device: {device}")
 
     # Hyperparameters
-    batch_size = 4
+    batch_size = 2
     w = int(((960 / 2) // 14) * 14)
     h = int(((540 / 2) // 14) * 14)
-    lr = 5e-5
-    n_epochs = 25
+    n_epochs = 10
 
     # Output directory (relative to script location)
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -448,15 +447,13 @@ def main():
     backbone_name = f"dinov2_{backbone_arch}"
 
     backbone_model = torch.hub.load(repo_or_dir="facebookresearch/dinov2", model=backbone_name)
-    backbone_model.eval()
     backbone_model.to(device)
     print("Backbone loaded successfully!")
 
     # Get embedding dimension from backbone
     imgs, _ = next(iter(train_loader))
     imgs = imgs.to(device)
-    with torch.no_grad():
-        output = backbone_model.forward_features(imgs)["x_norm_patchtokens"]
+    output = backbone_model.forward_features(imgs)["x_norm_patchtokens"]
     n_embedding = output.shape[2]
     print(f"Embedding dimension: {n_embedding}")
     print(f"Patch tokens shape: {output.shape}")
@@ -472,7 +469,10 @@ def main():
 
     # Loss and optimizer
     loss_fct = torch.nn.CrossEntropyLoss()
-    optimizer = optim.SGD(classifier.parameters(), lr=lr, momentum=0.9)
+    optimizer = torch.optim.Adam([
+    {"params": backbone_model.parameters(), "lr": 1e-5},
+    {"params": classifier.parameters(), "lr": 1e-4}
+])
 
     # Training history
     history = {
